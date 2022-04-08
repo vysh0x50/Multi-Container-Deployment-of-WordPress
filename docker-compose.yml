@@ -1,0 +1,64 @@
+version: '3'
+  
+services:
+  database:
+    image: mysql:5.7
+    container_name: database
+    networks:
+      - wpgrid
+    volumes:
+      - db-data:/var/lib/mysql/
+    environment:
+      MYSQL_ROOT_PASSWORD: <mysql root password>
+      MYSQL_DATABASE: <database name>
+      MYSQL_USER: <database user>
+      MYSQL_PASSWORD: <database password>
+
+  wordpress:
+    image: wordpress:5.9.3-php7.4-fpm-alpine
+    container_name: wordpress
+    networks:
+      - wpgrid
+    volumes:
+      - wp-data:/var/www/html/
+    environment:
+      WORDPRESS_DB_HOST: database
+      WORDPRESS_DB_NAME: <database name>
+      WORDPRESS_DB_USER: <database user>
+      WORDPRESS_DB_PASSWORD: <database user password>
+    depends_on:
+      - database
+
+  webserver:
+    image: nginx:1.21.6-alpine
+    container_name: webserver
+    networks:
+      - wpgrid
+    volumes:
+      - ./nginx/:/etc/nginx/conf.d/
+      - ./logs/nginx:/var/log/nginx/
+      - wp-data:/var/www/html/
+      - certbot:/etc/letsencrypt/
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - wordpress
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - certbot:/etc/letsencrypt/
+      - wp-data:/var/www/html/
+    command: certonly --webroot --webroot-path=/var/www/html/ --email <your email-id> --agree-tos --no-eff-email --force-renewal -d blog.vyshnavlalp.ml
+    depends_on:
+      - webserver
+
+networks:
+  wpgrid:
+
+volumes:
+  db-data:
+  wp-data:
+  certbot:
